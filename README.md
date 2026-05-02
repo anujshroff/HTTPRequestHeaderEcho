@@ -1,1 +1,62 @@
 # HTTPRequestHeaderEcho
+
+Tiny ASP.NET Core service that echoes incoming HTTP request headers back as plain text. Useful for debugging proxies, load balancers, ingress rules, and client header behavior.
+
+## Endpoint
+
+`GET /` — returns every header on the incoming request as `Key: value` lines.
+
+```
+$ curl http://localhost:5291/
+Host: localhost:5291
+User-Agent: curl/8.4.0
+Accept: */*
+```
+
+## Requirements
+
+- .NET 10 SDK
+
+## Run locally
+
+```powershell
+dotnet run --project src/HTTPRequestHeaderEcho
+```
+
+Listens on `http://localhost:5291` and `https://localhost:7013` by default (see [src/HTTPRequestHeaderEcho/Properties/launchSettings.json](src/HTTPRequestHeaderEcho/Properties/launchSettings.json)).
+
+## Filtering
+
+Set `HEADER_PREFIX_FILTER` to a comma-separated list of prefixes to return only headers whose names start with one of them (case-insensitive). When unset or empty, all headers are returned.
+
+```powershell
+$env:HEADER_PREFIX_FILTER = "x-,sec-"
+dotnet run --project src/HTTPRequestHeaderEcho
+```
+
+```
+$ curl http://localhost:5291/
+X-Forwarded-For: 203.0.113.7
+Sec-Fetch-Site: cross-site
+```
+
+## Project layout
+
+```
+.
+├── HTTPRequestHeaderEcho.sln
+└── src/
+    └── HTTPRequestHeaderEcho/
+        ├── HTTPRequestHeaderEcho.csproj
+        ├── Program.cs
+        ├── appsettings.json
+        ├── appsettings.Development.json
+        └── Properties/
+            └── launchSettings.json
+```
+
+The whole app lives in [src/HTTPRequestHeaderEcho/Program.cs](src/HTTPRequestHeaderEcho/Program.cs).
+
+## License
+
+[MIT](LICENSE).
