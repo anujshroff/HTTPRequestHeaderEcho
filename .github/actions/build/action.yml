@@ -32,7 +32,7 @@ runs:
 
     - name: Publish
       run: |
-        dotnet publish ${{ github.workspace }} --configuration ${{ inputs.CONFIGURATION }} --no-build --output ${{ github.workspace }}/publish
+        dotnet publish ${{ github.workspace }}/src/HTTPRequestHeaderEcho --configuration ${{ inputs.CONFIGURATION }} --no-build --output ${{ github.workspace }}/publish
       shell: bash
 
     - name: Docker Build
@@ -66,7 +66,7 @@ runs:
           fi
           
           # Build and push Docker image
-          docker build ${{ github.workspace }}/publish --file ${{ github.workspace }}/Dockerfile $DOCKER_TAGS
+          docker build ${{ github.workspace }}/publish --file ${{ github.workspace }}/src/HTTPRequestHeaderEcho/Dockerfile $DOCKER_TAGS
           docker push -a ghcr.io/${{ github.repository_owner }}/httprequestheaderecho
       shell: bash
 
