@@ -9,7 +9,7 @@ inputs:
     default: '10.x'
   CODEQL_LANGUAGES:
     required: false
-    default: 'csharp,javascript'
+    default: 'csharp'
   FAIL_ON_HIGH:
     required: false
     default: false
