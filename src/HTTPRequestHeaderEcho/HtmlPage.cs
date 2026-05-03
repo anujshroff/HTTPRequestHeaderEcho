@@ -207,6 +207,41 @@ public static class HtmlPage
         return sb.ToString();
     }
 
+    public static string RenderInterstitial(HttpContext ctx)
+    {
+        var encoder = HtmlEncoder.Default;
+        var nextUrl = $"{ctx.Request.Path}{ctx.Request.QueryString}";
+
+        return $"""
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTTP Headers &mdash; confirm</title>
+<style>{Css}</style>
+</head>
+<body>
+<div class="container">
+<header class="top"><h1>HTTP Headers</h1></header>
+<section class="band">
+<div class="band-label">confirm visit</div>
+<p class="note">This service can set arbitrary HTTP response headers on your browser via crafted URLs &mdash; including <code>Set-Cookie</code>, <code>Refresh</code> redirects, long-lived <code>Strict-Transport-Security</code> pins, and <code>Clear-Site-Data</code>. Continue only if you intentionally navigated here.</p>
+<p class="note">After accepting, this prompt won't return for 6 hours.</p>
+<form method="post" action="/consent" class="hform">
+<input type="hidden" name="next" value="{encoder.Encode(nextUrl)}">
+<button type="submit">accept and continue &rarr;</button>
+</form>
+</section>
+<footer>
+<a href="/plain">cancel &mdash; view /plain instead &rarr;</a>
+</footer>
+</div>
+</body>
+</html>
+""";
+    }
+
     private static string GroupKey(string name)
     {
         var dash = name.IndexOf('-');
