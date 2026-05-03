@@ -1,4 +1,5 @@
 using HTTPRequestHeaderEcho;
+using HTTPRequestHeaderEcho.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Text;
 
@@ -9,8 +10,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 });
+builder.Services.AddSingleton<IVersionService, VersionService>();
 var app = builder.Build();
 app.UseForwardedHeaders();
+
+var version = app.Services.GetRequiredService<IVersionService>().GetVersion();
 
 var prefixes = (builder.Configuration["HEADER_PREFIX_FILTER"] ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -18,11 +22,11 @@ var prefixes = (builder.Configuration["HEADER_PREFIX_FILTER"] ?? "")
 var hideList = (builder.Configuration["HEADER_HIDE_LIST"] ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-static IResult? Gate(HttpContext ctx)
+IResult? Gate(HttpContext ctx)
 {
     if (ctx.Request.Cookies.ContainsKey(Consent.CookieName)) return null;
     ctx.Response.Headers.CacheControl = "no-store";
-    return Results.Content(HtmlPage.RenderInterstitial(ctx), "text/html; charset=utf-8");
+    return Results.Content(HtmlPage.RenderInterstitial(ctx, version), "text/html; charset=utf-8");
 }
 
 app.MapGet("/plain", (HttpContext ctx) =>
@@ -49,7 +53,8 @@ app.MapGet("/", (HttpContext ctx) =>
         ValidRequestHeaders: [],
         DroppedRequestHeaders: [],
         IgnoredRequestLines: [],
-        IgnoredResponseLines: []);
+        IgnoredResponseLines: [],
+        Version: version);
     return Results.Content(HtmlPage.Render(model), "text/html; charset=utf-8");
 });
 
@@ -92,7 +97,8 @@ app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
         ValidRequestHeaders: parsedReq.Valid,
         DroppedRequestHeaders: dropped,
         IgnoredRequestLines: parsedReq.Ignored,
-        IgnoredResponseLines: parsedResp.Ignored);
+        IgnoredResponseLines: parsedResp.Ignored,
+        Version: version);
     return Results.Content(HtmlPage.Render(model), "text/html; charset=utf-8");
 });
 

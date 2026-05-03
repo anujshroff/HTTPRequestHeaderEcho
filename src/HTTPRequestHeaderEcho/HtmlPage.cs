@@ -14,7 +14,8 @@ public sealed record HtmlPageModel(
     IReadOnlyList<KeyValuePair<string, string>> ValidRequestHeaders,
     IReadOnlyList<KeyValuePair<string, string>> DroppedRequestHeaders,
     IReadOnlyList<string> IgnoredRequestLines,
-    IReadOnlyList<string> IgnoredResponseLines);
+    IReadOnlyList<string> IgnoredResponseLines,
+    string Version);
 
 public static class HtmlPage
 {
@@ -216,6 +217,7 @@ public static class HtmlPage
             var filterText = string.Join(", ", m.Prefixes.Select(encoder.Encode));
             sb.Append($"<span>Active prefix filter: <strong>{filterText}</strong></span>\n");
         }
+        sb.Append($"<span class=\"version\">Version: <strong>{encoder.Encode(m.Version)}</strong></span>\n");
         sb.Append("</footer>\n");
         sb.Append("</div>\n");
 
@@ -229,7 +231,7 @@ public static class HtmlPage
         return sb.ToString();
     }
 
-    public static string RenderInterstitial(HttpContext ctx)
+    public static string RenderInterstitial(HttpContext ctx, string version)
     {
         var encoder = HtmlEncoder.Default;
         var nextUrl = $"{ctx.Request.Path}{ctx.Request.QueryString}";
@@ -257,6 +259,7 @@ public static class HtmlPage
 </section>
 <footer>
 <a href="/plain">Cancel &mdash; view /plain instead &rarr;</a>
+<span class="version">Version: <strong>{encoder.Encode(version)}</strong></span>
 </footer>
 </div>
 </body>
@@ -732,5 +735,6 @@ public static class HtmlPage
   footer a { color: var(--accent); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
   footer strong { color: var(--fg); font-weight: 500; font-family: var(--mono); }
+  footer .version { margin-left: auto; }
 """;
 }
