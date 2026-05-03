@@ -1,8 +1,16 @@
 using HTTPRequestHeaderEcho;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 var app = builder.Build();
+app.UseForwardedHeaders();
 
 var prefixes = (builder.Configuration["HEADER_PREFIX_FILTER"] ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -109,7 +117,7 @@ app.MapPost("/consent", async (HttpContext ctx) =>
     {
         MaxAge = TimeSpan.FromHours(6),
         HttpOnly = true,
-        SameSite = SameSiteMode.Lax,
+        SameSite = SameSiteMode.Strict,
         Secure = ctx.Request.IsHttps,
         Path = "/",
     });
