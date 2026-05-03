@@ -210,6 +210,7 @@ public static class HtmlPage
 
         // Footer
         sb.Append("<footer>\n");
+        sb.Append("<span>&copy; 2026 Anuj Shroff &mdash; <a href=\"https://httprequestheaderecho.anujshroff.com\" target=\"_blank\">HTTPRequestHeaderEcho</a></span>\n");
         sb.Append("<a href=\"/plain\">View as plain text &rarr;</a>\n");
         sb.Append("<a href=\"/\">Start fresh test &rarr;</a>\n");
         if (m.Prefixes.Length > 0)
@@ -258,6 +259,7 @@ public static class HtmlPage
 </form>
 </section>
 <footer>
+<span>&copy; 2026 Anuj Shroff &mdash; <a href="https://httprequestheaderecho.anujshroff.com" target="_blank">HTTPRequestHeaderEcho</a></span>
 <a href="/plain">Cancel &mdash; view /plain instead &rarr;</a>
 <span class="version">Version: <strong>{encoder.Encode(version)}</strong></span>
 </footer>
