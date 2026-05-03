@@ -16,7 +16,7 @@ public static class HeaderFilter
         headers.SelectMany(h =>
         {
             if (!string.Equals(h.Key, "Cookie", StringComparison.OrdinalIgnoreCase))
-                return new[] { h };
+                return [h];
             var scrubbed = Consent.ScrubCookieHeader(h.Value.ToString());
             return scrubbed is null
                 ? []
