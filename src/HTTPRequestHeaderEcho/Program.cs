@@ -25,6 +25,7 @@ app.MapGet("/", (HttpContext ctx) =>
         CurrentRequestSpec: "",
         CurrentResponseSpec: "",
         ValidRequestHeaders: [],
+        DroppedRequestHeaders: [],
         IgnoredRequestLines: [],
         IgnoredResponseLines: []);
     return Results.Content(HtmlPage.Render(model), "text/html; charset=utf-8");
@@ -40,6 +41,16 @@ app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
     ResponseHeaderSpec.Apply(ctx.Response, parsedResp.Valid);
     ctx.Response.ContentType = "text/html; charset=utf-8";
 
+    var dropped = new List<KeyValuePair<string, string>>();
+    foreach (var kvp in parsedReq.Valid)
+    {
+        if (!ctx.Request.Headers.TryGetValue(kvp.Key, out var actual) ||
+            actual.ToString() != kvp.Value)
+        {
+            dropped.Add(kvp);
+        }
+    }
+
     var model = new HtmlPageModel(
         Ctx: ctx,
         Prefixes: prefixes,
@@ -47,6 +58,7 @@ app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
         CurrentRequestSpec: rawReq,
         CurrentResponseSpec: rawResp,
         ValidRequestHeaders: parsedReq.Valid,
+        DroppedRequestHeaders: dropped,
         IgnoredRequestLines: parsedReq.Ignored,
         IgnoredResponseLines: parsedResp.Ignored);
     return Results.Content(HtmlPage.Render(model), "text/html; charset=utf-8");

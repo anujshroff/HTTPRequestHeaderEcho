@@ -11,6 +11,7 @@ public sealed record HtmlPageModel(
     string CurrentRequestSpec,
     string CurrentResponseSpec,
     IReadOnlyList<KeyValuePair<string, string>> ValidRequestHeaders,
+    IReadOnlyList<KeyValuePair<string, string>> DroppedRequestHeaders,
     IReadOnlyList<string> IgnoredRequestLines,
     IReadOnlyList<string> IgnoredResponseLines);
 
@@ -69,6 +70,19 @@ public static class HtmlPage
 
         // Request headers
         sb.Append("<section class=\"band\">\n<div class=\"band-label\">request</div>\n");
+        if (m.DroppedRequestHeaders.Count > 0)
+        {
+            sb.Append("<div class=\"dropped\">\n");
+            sb.Append($"<div class=\"dropped-title\">browser dropped {m.DroppedRequestHeaders.Count} request header(s)</div>\n");
+            sb.Append("<div class=\"dropped-body\">\n");
+            foreach (var (name, value) in m.DroppedRequestHeaders)
+            {
+                sb.Append($"<div class=\"dropped-line\">{encoder.Encode(name)}: {encoder.Encode(value)}</div>\n");
+            }
+            sb.Append("</div>\n");
+            sb.Append("<div class=\"dropped-hint\">Browsers forbid JS from setting some headers (<code>User-Agent</code>, <code>Cookie</code>, <code>Host</code>, <code>Origin</code>, <code>Referer</code>, <code>Connection</code>, <code>Sec-*</code>, etc.) and a few others may have been merged or stripped. The replay snippets below send these unmodified.</div>\n");
+            sb.Append("</div>\n");
+        }
         if (headers.Count == 0)
         {
             sb.Append("<div class=\"empty\">No headers matched the active prefix filter.</div>\n");
@@ -122,7 +136,7 @@ public static class HtmlPage
         sb.Append("</div>\n");
         sb.Append("<button type=\"submit\">send &rarr;</button>\n");
         sb.Append("</form>\n");
-        sb.Append("<p class=\"note\">With JS: request headers are sent via <code>fetch()</code>. Without JS: only response headers are applied (browsers can't add arbitrary request headers via plain form submit). Refreshing the result page re-navigates with browser-default request headers; the response cache test still works because <code>?h=</code> rides in the URL.</p>\n");
+        sb.Append("<p class=\"note\">With JS: request headers are sent via <code>fetch()</code>. Without JS: only response headers are applied (browsers can't add arbitrary request headers via plain form submit). <strong>Browsers also forbid JS from setting headers like <code>User-Agent</code>, <code>Cookie</code>, <code>Host</code>, <code>Referer</code>, <code>Origin</code>, <code>Sec-*</code></strong> &mdash; those will silently fail in-browser. The replay snippets below send them verbatim from a terminal. Refreshing the result page re-navigates with browser-default request headers; the response cache test still works because <code>?h=</code> rides in the URL.</p>\n");
         sb.Append("</section>\n");
 
         // Snippets (only when the user has submitted something)
@@ -455,6 +469,41 @@ public static class HtmlPage
     font-size: 13px;
     padding: 2px 0;
     word-break: break-all;
+  }
+  .dropped {
+    border: 1px solid var(--warn);
+    border-radius: 4px;
+    padding: 8px 12px;
+    background: var(--card);
+    margin-bottom: 12px;
+  }
+  .dropped-title {
+    color: var(--warn);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .dropped-title::before { content: "! "; }
+  .dropped-body { margin-bottom: 6px; }
+  .dropped-line {
+    color: var(--warn);
+    font-size: 13px;
+    padding: 1px 0;
+    word-break: break-all;
+  }
+  .dropped-hint {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .dropped-hint code {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 11px;
   }
   footer {
     margin-top: 32px;
