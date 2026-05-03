@@ -54,10 +54,18 @@ app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
     foreach (var kvp in parsedReq.Valid)
     {
         if (!ctx.Request.Headers.TryGetValue(kvp.Key, out var actual) ||
-            !actual.Contains(kvp.Value, StringComparer.Ordinal))
+            !HeaderValueMatches(actual.ToString(), kvp.Value))
         {
             dropped.Add(kvp);
         }
+    }
+
+    static bool HeaderValueMatches(string actual, string target)
+    {
+        if (actual == target) return true;
+        foreach (var part in actual.Split(','))
+            if (part.Trim() == target) return true;
+        return false;
     }
 
     var model = new HtmlPageModel(
