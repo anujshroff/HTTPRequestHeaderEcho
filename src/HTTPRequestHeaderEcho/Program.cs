@@ -15,6 +15,9 @@ app.UseForwardedHeaders();
 var prefixes = (builder.Configuration["HEADER_PREFIX_FILTER"] ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+var hideList = (builder.Configuration["HEADER_HIDE_LIST"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 static IResult? Gate(HttpContext ctx)
 {
     if (ctx.Request.Cookies.ContainsKey(Consent.CookieName)) return null;
@@ -26,7 +29,7 @@ app.MapGet("/plain", (HttpContext ctx) =>
 {
     ctx.Response.Headers.CacheControl = "private, no-store";
     var sb = new StringBuilder();
-    foreach (var h in ctx.Request.Headers.WithPrefixFilter(prefixes).WithConsentScrub())
+    foreach (var h in ctx.Request.Headers.WithPrefixFilter(prefixes).WithHideList(hideList).WithConsentScrub())
         sb.AppendLine($"{h.Key}: {h.Value}");
     return Results.Text(sb.ToString());
 });
@@ -39,6 +42,7 @@ app.MapGet("/", (HttpContext ctx) =>
     var model = new HtmlPageModel(
         Ctx: ctx,
         Prefixes: prefixes,
+        HideList: hideList,
         FormTargetGuid: Guid.NewGuid().ToString(),
         CurrentRequestSpec: "",
         CurrentResponseSpec: "",
@@ -81,6 +85,7 @@ app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
     var model = new HtmlPageModel(
         Ctx: ctx,
         Prefixes: prefixes,
+        HideList: hideList,
         FormTargetGuid: id.ToString(),
         CurrentRequestSpec: rawReq,
         CurrentResponseSpec: rawResp,
