@@ -66,21 +66,46 @@ Sec-Fetch-Site: cross-site
 ```
 .
 ├── HTTPRequestHeaderEcho.sln
-└── src/
-    └── HTTPRequestHeaderEcho/
-        ├── HTTPRequestHeaderEcho.csproj
-        ├── Program.cs           # endpoints + consent gate
-        ├── HtmlPage.cs          # server-rendered HTML/CSS/JS
-        ├── HeaderSpec.cs        # parsing/validation of header lines
-        ├── Snippets.cs          # curl + PowerShell replay snippets
-        ├── HeaderFilter.cs      # prefix filter + consent-cookie scrub
-        ├── Consent.cs
-        ├── appsettings.json
-        ├── appsettings.Development.json
-        └── Properties/
-            └── launchSettings.json
+├── src/
+│   └── HTTPRequestHeaderEcho/
+│       ├── HTTPRequestHeaderEcho.csproj
+│       ├── Program.cs           # endpoints + consent gate
+│       ├── HtmlPage.cs          # server-rendered HTML/CSS/JS
+│       ├── HeaderSpec.cs        # parsing/validation of header lines
+│       ├── Snippets.cs          # curl + PowerShell replay snippets
+│       ├── HeaderFilter.cs      # prefix filter + consent-cookie scrub
+│       ├── Consent.cs
+│       ├── Services/            # IVersionService
+│       ├── appsettings.json
+│       ├── appsettings.Development.json
+│       └── Properties/
+│           └── launchSettings.json
+└── test/
+    └── HTTPRequestHeaderEcho.Tests/
+        ├── HTTPRequestHeaderEcho.Tests.csproj
+        ├── Unit/                # HeaderSpec, Consent, Snippets, HeaderFilter
+        └── Integration/         # WebApplicationFactory-driven endpoint tests
 ```
+
+## Tests
+
+The test project lives at [test/HTTPRequestHeaderEcho.Tests/](test/HTTPRequestHeaderEcho.Tests/) and uses xUnit (v3) plus `Microsoft.AspNetCore.Mvc.Testing` for in-memory integration tests. Run from the repo root:
+
+```powershell
+dotnet test
+```
+
+Two test surfaces:
+
+- **Unit** — pure logic in [HeaderSpec.cs](src/HTTPRequestHeaderEcho/HeaderSpec.cs), [Consent.cs](src/HTTPRequestHeaderEcho/Consent.cs), [Snippets.cs](src/HTTPRequestHeaderEcho/Snippets.cs), and [HeaderFilter.cs](src/HTTPRequestHeaderEcho/HeaderFilter.cs).
+- **Integration** — the four endpoints (`/plain`, `/`, `/{guid}`, `POST /consent`) booted via `WebApplicationFactory<Program>`, including consent-gate behavior, prefix filter / hide-list env vars, response-header injection via `?h=`, dropped-header detection via `?r=`, and same-origin enforcement on `/consent`.
+
+The src project exposes its internals to the test assembly via `<InternalsVisibleTo Include="HTTPRequestHeaderEcho.Tests" />` in the .csproj so `Program` (implicitly internal under top-level statements) is reachable as the `WebApplicationFactory` type argument.
 
 ## License
 
 [MIT](LICENSE).
+
+## AI Notice
+
+This project was almost entirely generated using AI, leveraging the power of **Claude Code** with **Claude Opus 4.7**. It serves as a testament to the capabilities of modern AI in automating complex development tasks and streamlining the software creation process.
