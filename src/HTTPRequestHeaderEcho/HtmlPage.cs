@@ -108,8 +108,8 @@ public static class HtmlPage
 
         // Response headers (snapshot)
         sb.Append("<section class=\"band\">\n<div class=\"band-label\">response</div>\n");
-        sb.Append("<p class=\"note\">Snapshot at render time. Auto-headers added by Kestrel later (<code>Date</code>, <code>Server</code>, <code>Content-Length</code>, possibly <code>Transfer-Encoding</code>) are not shown &mdash; check your browser's DevTools for the full response.</p>\n");
-        sb.Append("<div class=\"group\">\n");
+        sb.Append("<p class=\"note\">Server-side snapshot at render time. Kestrel auto-headers (<code>Date</code>, <code>Server</code>, <code>Content-Length</code>, possibly <code>Transfer-Encoding</code>) are added later in the pipeline &mdash; use the live panel below to see what the browser actually received.</p>\n");
+        sb.Append("<div class=\"group\">\n<h2>snapshot (server-side)</h2>\n");
         var respHeaders = ctx.Response.Headers
             .OrderBy(h => h.Key, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -121,6 +121,12 @@ public static class HtmlPage
         {
             AppendRows(sb, respHeaders, encoder);
         }
+        sb.Append("</div>\n");
+
+        // Live response panel (populated by the form-submit fetch below)
+        sb.Append("<div class=\"group\" id=\"live-resp-group\">\n<h2>actual (received by browser)</h2>\n");
+        sb.Append("<p class=\"note\">Populated by the <strong>send</strong> button below. Lists the response headers the browser received from that <code>fetch()</code>, including Kestrel auto-headers (<code>Date</code>, <code>Server</code>, <code>Content-Length</code>, <code>Transfer-Encoding</code>). <code>Set-Cookie</code> is hidden from JS (forbidden response header).</p>\n");
+        sb.Append("<div id=\"live-resp-out\"><div class=\"empty\">submit the form below to populate</div></div>\n");
         sb.Append("</div>\n</section>\n");
 
         // Test playground form (combined: request + response headers)
@@ -266,6 +272,26 @@ public static class HtmlPage
 (function () {
   var form = document.getElementById('hform');
   if (!form) return;
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+  function renderLivePairs(pairs) {
+    var out = document.getElementById('live-resp-out');
+    if (!out) return;
+    if (!pairs || pairs.length === 0) {
+      out.innerHTML = '<div class="empty">(no headers exposed)</div>';
+      return;
+    }
+    pairs.sort(function (a, b) { return a[0].localeCompare(b[0]); });
+    var html = '';
+    pairs.forEach(function (p) {
+      html += '<div class="row"><div class="name">' + esc(p[0]) + '</div>'
+            + '<div class="value">' + esc(p[1]) + '</div></div>';
+    });
+    out.innerHTML = html;
+  }
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var reqEl = document.getElementById('req-h');
@@ -289,12 +315,17 @@ public static class HtmlPage
     var qs = params.toString();
     var url = form.getAttribute('action') + (qs ? '?' + qs : '');
     fetch(url, { headers: headers, redirect: 'follow' })
-      .then(function (r) { return r.text(); })
-      .then(function (text) {
+      .then(function (r) {
+        var pairs = [];
+        r.headers.forEach(function (v, k) { pairs.push([k, v]); });
+        return r.text().then(function (text) { return { pairs: pairs, text: text }; });
+      })
+      .then(function (result) {
         history.pushState({}, '', url);
         document.open();
-        document.write(text);
+        document.write(result.text);
         document.close();
+        renderLivePairs(result.pairs);
       })
       .catch(function () { window.location.href = url; });
   });
