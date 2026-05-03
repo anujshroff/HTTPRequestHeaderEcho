@@ -16,6 +16,7 @@ static IResult? Gate(HttpContext ctx)
 
 app.MapGet("/plain", (HttpContext ctx) =>
 {
+    ctx.Response.Headers.CacheControl = "private, no-store";
     var sb = new StringBuilder();
     foreach (var h in ctx.Request.Headers.WithPrefixFilter(prefixes).WithConsentScrub())
         sb.AppendLine($"{h.Key}: {h.Value}");
@@ -25,6 +26,7 @@ app.MapGet("/plain", (HttpContext ctx) =>
 app.MapGet("/", (HttpContext ctx) =>
 {
     if (Gate(ctx) is { } g) return g;
+    ctx.Response.Headers.CacheControl = "private, no-store";
     ctx.Response.ContentType = "text/html; charset=utf-8";
     var model = new HtmlPageModel(
         Ctx: ctx,
