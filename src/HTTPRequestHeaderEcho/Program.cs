@@ -1,5 +1,5 @@
-using System.Text;
 using HTTPRequestHeaderEcho;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
@@ -16,6 +16,19 @@ app.MapGet("/plain", (HttpContext ctx) =>
 });
 
 app.MapGet("/", (HttpContext ctx) =>
-    Results.Content(HtmlPage.Render(ctx, prefixes), "text/html; charset=utf-8"));
+{
+    var formGuid = Guid.NewGuid().ToString();
+    ctx.Response.ContentType = "text/html; charset=utf-8";
+    return Results.Content(HtmlPage.Render(ctx, prefixes, formGuid), "text/html; charset=utf-8");
+});
+
+app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
+{
+    var raw = ctx.Request.Query["h"].ToString();
+    var parsed = ResponseHeaderSpec.Parse(raw);
+    ResponseHeaderSpec.Apply(ctx.Response, parsed.Valid);
+    ctx.Response.ContentType = "text/html; charset=utf-8";
+    return Results.Content(HtmlPage.Render(ctx, prefixes, id.ToString(), parsed.Ignored), "text/html; charset=utf-8");
+});
 
 app.Run();

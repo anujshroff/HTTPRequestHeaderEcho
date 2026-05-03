@@ -4,14 +4,23 @@ Tiny ASP.NET Core service that echoes incoming HTTP request headers back to the 
 
 ## Endpoints
 
-- `GET /` — styled HTML page (terminal-themed, dark/light auto) with a request-metadata strip and headers grouped by prefix. Best in a browser.
-- `GET /plain` — every header as `Key: value` lines, `text/plain`. Best for `curl` and scripts.
+- `GET /` — styled HTML page (terminal-themed, dark/light auto) with request and response header sections, plus a form for testing custom response headers. Best in a browser.
+- `GET /plain` — every request header as `Key: value` lines, `text/plain`. Best for `curl` and scripts.
+- `GET /{guid}` — same page as `/`, but applies any headers from the `?h=` query param to its own response. Each line of `h` is `Name: Value`. Use the form on `/` to generate the URL — it's stable across refreshes so you can exercise HTTP caching (`If-None-Match`, `If-Modified-Since`, etc.) against a real server response.
 
 ```
 $ curl http://localhost:5291/plain
 Host: localhost:5291
 User-Agent: curl/8.4.0
 Accept: */*
+```
+
+```
+$ curl -i 'http://localhost:5291/d8e8fca2-dc0f-4a4f-b3a9-3e3b7c4a9c11?h=Cache-Control%3A%20max-age%3D60'
+HTTP/1.1 200 OK
+Cache-Control: max-age=60
+Content-Type: text/html; charset=utf-8
+...
 ```
 
 ## Requirements
