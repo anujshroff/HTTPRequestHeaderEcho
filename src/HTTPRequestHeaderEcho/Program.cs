@@ -17,18 +17,39 @@ app.MapGet("/plain", (HttpContext ctx) =>
 
 app.MapGet("/", (HttpContext ctx) =>
 {
-    var formGuid = Guid.NewGuid().ToString();
     ctx.Response.ContentType = "text/html; charset=utf-8";
-    return Results.Content(HtmlPage.Render(ctx, prefixes, formGuid), "text/html; charset=utf-8");
+    var model = new HtmlPageModel(
+        Ctx: ctx,
+        Prefixes: prefixes,
+        FormTargetGuid: Guid.NewGuid().ToString(),
+        CurrentRequestSpec: "",
+        CurrentResponseSpec: "",
+        ValidRequestHeaders: [],
+        IgnoredRequestLines: [],
+        IgnoredResponseLines: []);
+    return Results.Content(HtmlPage.Render(model), "text/html; charset=utf-8");
 });
 
 app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
 {
-    var raw = ctx.Request.Query["h"].ToString();
-    var parsed = ResponseHeaderSpec.Parse(raw);
-    ResponseHeaderSpec.Apply(ctx.Response, parsed.Valid);
+    var rawResp = ctx.Request.Query["h"].ToString();
+    var rawReq = ctx.Request.Query["r"].ToString();
+    var parsedResp = ResponseHeaderSpec.Parse(rawResp);
+    var parsedReq = ResponseHeaderSpec.Parse(rawReq);
+
+    ResponseHeaderSpec.Apply(ctx.Response, parsedResp.Valid);
     ctx.Response.ContentType = "text/html; charset=utf-8";
-    return Results.Content(HtmlPage.Render(ctx, prefixes, id.ToString(), parsed.Ignored), "text/html; charset=utf-8");
+
+    var model = new HtmlPageModel(
+        Ctx: ctx,
+        Prefixes: prefixes,
+        FormTargetGuid: id.ToString(),
+        CurrentRequestSpec: rawReq,
+        CurrentResponseSpec: rawResp,
+        ValidRequestHeaders: parsedReq.Valid,
+        IgnoredRequestLines: parsedReq.Ignored,
+        IgnoredResponseLines: parsedResp.Ignored);
+    return Results.Content(HtmlPage.Render(model), "text/html; charset=utf-8");
 });
 
 app.Run();

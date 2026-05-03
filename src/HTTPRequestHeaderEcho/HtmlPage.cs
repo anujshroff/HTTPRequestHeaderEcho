@@ -4,16 +4,23 @@ using System.Text.Encodings.Web;
 
 namespace HTTPRequestHeaderEcho;
 
+public sealed record HtmlPageModel(
+    HttpContext Ctx,
+    string[] Prefixes,
+    string FormTargetGuid,
+    string CurrentRequestSpec,
+    string CurrentResponseSpec,
+    IReadOnlyList<KeyValuePair<string, string>> ValidRequestHeaders,
+    IReadOnlyList<string> IgnoredRequestLines,
+    IReadOnlyList<string> IgnoredResponseLines);
+
 public static class HtmlPage
 {
-    public static string Render(
-        HttpContext ctx,
-        string[] prefixes,
-        string formTargetGuid,
-        IReadOnlyList<string>? ignoredLines = null)
+    public static string Render(HtmlPageModel m)
     {
         var encoder = HtmlEncoder.Default;
-        var headers = ctx.Request.Headers.WithPrefixFilter(prefixes).ToList();
+        var ctx = m.Ctx;
+        var headers = ctx.Request.Headers.WithPrefixFilter(m.Prefixes).ToList();
 
         var grouped = headers
             .GroupBy(h => GroupKey(h.Key), StringComparer.OrdinalIgnoreCase)
@@ -40,6 +47,7 @@ public static class HtmlPage
 <div class="container">
 """);
 
+        // Title + meta strip
         sb.Append("<header class=\"top\">\n");
         sb.Append("<h1>HTTP Headers</h1>\n");
         sb.Append("<div class=\"meta\">");
@@ -48,7 +56,16 @@ public static class HtmlPage
         sb.Append($"<span class=\"chip\">protocol<strong>{encoder.Encode(ctx.Request.Protocol)}</strong></span>");
         var remoteIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "-";
         sb.Append($"<span class=\"chip\">remote<strong>{encoder.Encode(remoteIp)}</strong></span>");
-        sb.Append("</div>\n</header>\n");
+        sb.Append("</div>\n");
+
+        // Render-time strip
+        var renderedAt = DateTime.UtcNow.ToString("o");
+        sb.Append("<div class=\"render-time\">\n");
+        sb.Append("<span class=\"label\">rendered (UTC)</span>");
+        sb.Append($"<strong>{encoder.Encode(renderedAt)}</strong>");
+        sb.Append("<span class=\"hint\">page content &mdash; not an HTTP header. If this matches across refreshes, the page came from cache.</span>\n");
+        sb.Append("</div>\n");
+        sb.Append("</header>\n");
 
         // Request headers
         sb.Append("<section class=\"band\">\n<div class=\"band-label\">request</div>\n");
@@ -92,39 +109,86 @@ public static class HtmlPage
         }
         sb.Append("</div>\n</section>\n");
 
-        // Test response headers form
-        sb.Append("<section class=\"band\">\n<div class=\"band-label\">test response headers</div>\n");
-        sb.Append($"<form action=\"/{encoder.Encode(formTargetGuid)}\" method=\"get\" class=\"hform\">\n");
-        sb.Append("<textarea name=\"h\" rows=\"6\" placeholder=\"Cache-Control: max-age=60&#10;X-Custom: hello\" spellcheck=\"false\"></textarea>\n");
+        // Test playground form (combined: request + response headers)
+        sb.Append("<section class=\"band\">\n<div class=\"band-label\">test playground</div>\n");
+        sb.Append($"<form id=\"hform\" action=\"/{encoder.Encode(m.FormTargetGuid)}\" method=\"get\" class=\"hform\">\n");
+        sb.Append("<div class=\"field\">\n");
+        sb.Append("<label for=\"req-h\">request headers (sent by your client)</label>\n");
+        sb.Append($"<textarea id=\"req-h\" name=\"r\" rows=\"4\" placeholder=\"X-Custom: hello&#10;Authorization: Bearer abc\" spellcheck=\"false\">{encoder.Encode(m.CurrentRequestSpec)}</textarea>\n");
+        sb.Append("</div>\n");
+        sb.Append("<div class=\"field\">\n");
+        sb.Append("<label for=\"res-h\">response headers (returned by the server)</label>\n");
+        sb.Append($"<textarea id=\"res-h\" name=\"h\" rows=\"4\" placeholder=\"Cache-Control: max-age=60&#10;X-Trace: xyz\" spellcheck=\"false\">{encoder.Encode(m.CurrentResponseSpec)}</textarea>\n");
+        sb.Append("</div>\n");
         sb.Append("<button type=\"submit\">send &rarr;</button>\n");
         sb.Append("</form>\n");
-        sb.Append("<p class=\"note\">Submits as <code>GET</code> to a fresh URL per page load. Refresh the result page to test caching; come back to <code>/</code> for a new URL.</p>\n");
+        sb.Append("<p class=\"note\">With JS: request headers are sent via <code>fetch()</code>. Without JS: only response headers are applied (browsers can't add arbitrary request headers via plain form submit). Refreshing the result page re-navigates with browser-default request headers; the response cache test still works because <code>?h=</code> rides in the URL.</p>\n");
         sb.Append("</section>\n");
 
-        // Ignored input (only when there's something to report)
-        if (ignoredLines is { Count: > 0 })
+        // Snippets (only when the user has submitted something)
+        var hasInput = !string.IsNullOrEmpty(m.CurrentRequestSpec) || !string.IsNullOrEmpty(m.CurrentResponseSpec);
+        if (hasInput)
         {
-            sb.Append("<section class=\"band\">\n<div class=\"band-label\">ignored input</div>\n");
-            sb.Append("<div class=\"warn\">\n");
-            foreach (var line in ignoredLines)
-            {
-                sb.Append($"<div class=\"warn-line\">{encoder.Encode(line)}</div>\n");
-            }
+            var absUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}{ctx.Request.Path}{ctx.Request.QueryString}";
+            sb.Append("<section class=\"band\">\n<div class=\"band-label\">replay snippets</div>\n");
+            sb.Append("<p class=\"note\">Refresh-safe replay from a terminal. The browser refresh button doesn't send custom request headers, but these do.</p>\n");
+
+            sb.Append("<div class=\"snippet\">\n");
+            sb.Append("<span class=\"snippet-label\">curl</span>\n");
+            sb.Append($"<pre>{encoder.Encode(Snippets.Curl(absUrl, m.ValidRequestHeaders))}</pre>\n");
             sb.Append("</div>\n");
-            sb.Append("<p class=\"note\">These lines were skipped: missing <code>:</code>, invalid header name, or value contained CR/LF.</p>\n");
+
+            sb.Append("<div class=\"snippet\">\n");
+            sb.Append("<span class=\"snippet-label\">powershell (Invoke-RestMethod)</span>\n");
+            sb.Append($"<pre>{encoder.Encode(Snippets.PowerShell(absUrl, m.ValidRequestHeaders))}</pre>\n");
+            sb.Append("</div>\n");
+
             sb.Append("</section>\n");
         }
 
+        // Ignored input
+        var hasIgnored = m.IgnoredRequestLines.Count > 0 || m.IgnoredResponseLines.Count > 0;
+        if (hasIgnored)
+        {
+            sb.Append("<section class=\"band\">\n<div class=\"band-label\">ignored input</div>\n");
+            sb.Append("<p class=\"note\">Lines skipped: missing <code>:</code>, invalid header name, or value contained CR/LF.</p>\n");
+            if (m.IgnoredRequestLines.Count > 0)
+            {
+                sb.Append("<div class=\"sub\"><span class=\"sub-label\">request:</span></div>\n");
+                sb.Append("<div class=\"warn\">\n");
+                foreach (var line in m.IgnoredRequestLines)
+                    sb.Append($"<div class=\"warn-line\">{encoder.Encode(line)}</div>\n");
+                sb.Append("</div>\n");
+            }
+            if (m.IgnoredResponseLines.Count > 0)
+            {
+                sb.Append("<div class=\"sub\"><span class=\"sub-label\">response:</span></div>\n");
+                sb.Append("<div class=\"warn\">\n");
+                foreach (var line in m.IgnoredResponseLines)
+                    sb.Append($"<div class=\"warn-line\">{encoder.Encode(line)}</div>\n");
+                sb.Append("</div>\n");
+            }
+            sb.Append("</section>\n");
+        }
+
+        // Footer
         sb.Append("<footer>\n");
         sb.Append("<a href=\"/plain\">view as plain text &rarr;</a>\n");
         sb.Append("<a href=\"/\">start fresh test &rarr;</a>\n");
-        if (prefixes.Length > 0)
+        if (m.Prefixes.Length > 0)
         {
-            var filterText = string.Join(", ", prefixes.Select(encoder.Encode));
+            var filterText = string.Join(", ", m.Prefixes.Select(encoder.Encode));
             sb.Append($"<span>active prefix filter: <strong>{filterText}</strong></span>\n");
         }
         sb.Append("</footer>\n");
-        sb.Append("</div>\n</body>\n</html>\n");
+        sb.Append("</div>\n");
+
+        // Inline JS
+        sb.Append("<script>");
+        sb.Append(Js);
+        sb.Append("</script>\n");
+
+        sb.Append("</body>\n</html>\n");
 
         return sb.ToString();
     }
@@ -148,6 +212,45 @@ public static class HtmlPage
             sb.Append("</div>\n");
         }
     }
+
+    private const string Js = """
+(function () {
+  var form = document.getElementById('hform');
+  if (!form) return;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var reqEl = document.getElementById('req-h');
+    var resEl = document.getElementById('res-h');
+    var reqText = reqEl ? reqEl.value : '';
+    var resText = resEl ? resEl.value : '';
+    var headers = {};
+    reqText.split('\n').forEach(function (line) {
+      var t = line.trim();
+      if (!t) return;
+      var c = t.indexOf(':');
+      if (c < 0) return;
+      var n = t.slice(0, c).trim();
+      var v = t.slice(c + 1).trim();
+      if (!n) return;
+      try { headers[n] = v; } catch (_) {}
+    });
+    var params = new URLSearchParams();
+    if (resText) params.set('h', resText);
+    if (reqText) params.set('r', reqText);
+    var qs = params.toString();
+    var url = form.getAttribute('action') + (qs ? '?' + qs : '');
+    fetch(url, { headers: headers, redirect: 'follow' })
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        history.pushState({}, '', url);
+        document.open();
+        document.write(text);
+        document.close();
+      })
+      .catch(function () { window.location.href = url; });
+  });
+})();
+""";
 
     private const string Css = """
   :root {
@@ -194,6 +297,27 @@ public static class HtmlPage
     color: var(--muted);
   }
   .chip strong { color: var(--fg); font-weight: 500; margin-left: 4px; }
+  .render-time {
+    margin-top: 12px;
+    background: var(--card);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .render-time .label {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .render-time strong { color: var(--accent); font-weight: 600; }
+  .render-time .hint { color: var(--muted); font-size: 11px; font-style: italic; }
   section.band { margin-bottom: 32px; }
   .band-label {
     color: var(--accent);
@@ -253,7 +377,14 @@ public static class HtmlPage
     padding: 0 4px;
     font-size: 11px;
   }
-  .hform { display: flex; flex-direction: column; gap: 8px; }
+  .hform { display: flex; flex-direction: column; gap: 12px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+  }
   textarea {
     width: 100%;
     background: var(--card);
@@ -265,7 +396,7 @@ public static class HtmlPage
     font-size: 13px;
     line-height: 1.5;
     resize: vertical;
-    min-height: 96px;
+    min-height: 80px;
   }
   textarea:focus {
     outline: none;
@@ -284,11 +415,40 @@ public static class HtmlPage
     cursor: pointer;
   }
   button:hover { background: var(--accent); color: var(--bg); }
+  .snippet { margin-bottom: 12px; }
+  .snippet-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .snippet pre {
+    margin: 0;
+    padding: 10px 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--fg);
+    white-space: pre;
+  }
+  .sub { margin: 8px 0 4px; }
+  .sub-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+  }
   .warn {
     border: 1px solid var(--warn);
     border-radius: 4px;
     padding: 8px 12px;
     background: var(--card);
+    margin-bottom: 8px;
   }
   .warn-line {
     color: var(--warn);
