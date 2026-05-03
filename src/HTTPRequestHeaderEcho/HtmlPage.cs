@@ -21,7 +21,7 @@ public static class HtmlPage
     {
         var encoder = HtmlEncoder.Default;
         var ctx = m.Ctx;
-        var headers = ctx.Request.Headers.WithPrefixFilter(m.Prefixes).ToList();
+        var headers = ctx.Request.Headers.WithPrefixFilter(m.Prefixes).WithConsentScrub().ToList();
 
         var grouped = headers
             .GroupBy(h => GroupKey(h.Key), StringComparer.OrdinalIgnoreCase)

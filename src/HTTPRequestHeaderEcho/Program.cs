@@ -9,7 +9,7 @@ var prefixes = (builder.Configuration["HEADER_PREFIX_FILTER"] ?? "")
 
 static IResult? Gate(HttpContext ctx)
 {
-    if (ctx.Request.Cookies.ContainsKey("consent")) return null;
+    if (ctx.Request.Cookies.ContainsKey(Consent.CookieName)) return null;
     ctx.Response.Headers.CacheControl = "no-store";
     return Results.Content(HtmlPage.RenderInterstitial(ctx), "text/html; charset=utf-8");
 }
@@ -17,7 +17,7 @@ static IResult? Gate(HttpContext ctx)
 app.MapGet("/plain", (HttpContext ctx) =>
 {
     var sb = new StringBuilder();
-    foreach (var h in ctx.Request.Headers.WithPrefixFilter(prefixes))
+    foreach (var h in ctx.Request.Headers.WithPrefixFilter(prefixes).WithConsentScrub())
         sb.AppendLine($"{h.Key}: {h.Value}");
     return Results.Text(sb.ToString());
 });
@@ -75,11 +75,27 @@ app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
 
 app.MapPost("/consent", async (HttpContext ctx) =>
 {
+    var expectedOrigin = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+    var origin = ctx.Request.Headers.Origin.ToString();
+    var sameOrigin = !string.IsNullOrEmpty(origin) && origin == expectedOrigin;
+    if (!sameOrigin)
+    {
+        var referer = ctx.Request.Headers.Referer.ToString();
+        sameOrigin = !string.IsNullOrEmpty(referer)
+            && (referer == expectedOrigin
+                || referer.StartsWith(expectedOrigin + "/", StringComparison.Ordinal));
+    }
+    if (!sameOrigin) return Results.StatusCode(StatusCodes.Status403Forbidden);
+
     var form = await ctx.Request.ReadFormAsync();
     var next = form["next"].ToString();
-    if (string.IsNullOrEmpty(next) || !next.StartsWith('/') || next.StartsWith("//"))
+    if (string.IsNullOrEmpty(next)
+        || next[0] != '/'
+        || (next.Length > 1 && (next[1] == '/' || next[1] == '\\')))
+    {
         next = "/";
-    ctx.Response.Cookies.Append("consent", "1", new CookieOptions
+    }
+    ctx.Response.Cookies.Append(Consent.CookieName, "1", new CookieOptions
     {
         MaxAge = TimeSpan.FromHours(6),
         HttpOnly = true,
