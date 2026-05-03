@@ -1,6 +1,6 @@
 namespace HTTPRequestHeaderEcho;
 
-public static class ResponseHeaderSpec
+public static class HeaderSpec
 {
     public sealed record ParseResult(
         IReadOnlyList<KeyValuePair<string, string>> Valid,
@@ -28,7 +28,7 @@ public static class ResponseHeaderSpec
             var name = line[..colon].Trim();
             var value = line[(colon + 1)..].Trim();
 
-            if (!IsToken(name) || value.Contains('\r') || value.Contains('\n'))
+            if (!IsToken(name) || HasForbiddenValueChar(value))
             {
                 ignored.Add(line);
                 continue;
@@ -38,6 +38,18 @@ public static class ResponseHeaderSpec
         }
 
         return new ParseResult(valid, ignored);
+    }
+
+    private static bool HasForbiddenValueChar(string s)
+    {
+        // RFC 9110 §5.5: field-value may contain VCHAR, SP, HTAB, and obs-text.
+        // Reject all CTL chars (0x00-0x1F, 0x7F) except HTAB.
+        foreach (var c in s)
+        {
+            if (c == '\t') continue;
+            if (c < 0x20 || c == 0x7F) return true;
+        }
+        return false;
     }
 
     public static void Apply(

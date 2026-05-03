@@ -83,7 +83,7 @@ public static class HtmlPage
             sb.Append("<div class=\"dropped-hint\">Browsers forbid JS from setting some headers (<code>User-Agent</code>, <code>Cookie</code>, <code>Host</code>, <code>Origin</code>, <code>Referer</code>, <code>Connection</code>, <code>Sec-*</code>, etc.) and a few others may have been merged or stripped. The replay snippets below send these unmodified.</div>\n");
             sb.Append("</div>\n");
         }
-        if (headers.Count == 0)
+        if (headers.Count == 0 && m.DroppedRequestHeaders.Count == 0)
         {
             sb.Append("<div class=\"empty\">No headers matched the active prefix filter.</div>\n");
         }

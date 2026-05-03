@@ -44,17 +44,17 @@ app.MapGet("/{id:guid}", (HttpContext ctx, Guid id) =>
     if (Gate(ctx) is { } g) return g;
     var rawResp = ctx.Request.Query["h"].ToString();
     var rawReq = ctx.Request.Query["r"].ToString();
-    var parsedResp = ResponseHeaderSpec.Parse(rawResp);
-    var parsedReq = ResponseHeaderSpec.Parse(rawReq);
+    var parsedResp = HeaderSpec.Parse(rawResp);
+    var parsedReq = HeaderSpec.Parse(rawReq);
 
-    ResponseHeaderSpec.Apply(ctx.Response, parsedResp.Valid);
+    HeaderSpec.Apply(ctx.Response, parsedResp.Valid);
     ctx.Response.ContentType = "text/html; charset=utf-8";
 
     var dropped = new List<KeyValuePair<string, string>>();
     foreach (var kvp in parsedReq.Valid)
     {
         if (!ctx.Request.Headers.TryGetValue(kvp.Key, out var actual) ||
-            actual.ToString() != kvp.Value)
+            !actual.Contains(kvp.Value, StringComparer.Ordinal))
         {
             dropped.Add(kvp);
         }
