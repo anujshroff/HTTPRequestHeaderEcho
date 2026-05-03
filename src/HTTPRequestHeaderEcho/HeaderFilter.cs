@@ -11,6 +11,13 @@ public static class HeaderFilter
             : headers.Where(h =>
                 prefixes.Any(p => h.Key.StartsWith(p, StringComparison.OrdinalIgnoreCase)));
 
+    public static IEnumerable<KeyValuePair<string, StringValues>> WithHideList(
+        this IEnumerable<KeyValuePair<string, StringValues>> headers, string[] hidden) =>
+        hidden.Length == 0
+            ? headers
+            : headers.Where(h =>
+                !hidden.Any(name => string.Equals(h.Key, name, StringComparison.OrdinalIgnoreCase)));
+
     public static IEnumerable<KeyValuePair<string, StringValues>> WithConsentScrub(
         this IEnumerable<KeyValuePair<string, StringValues>> headers) =>
         headers.SelectMany(h =>

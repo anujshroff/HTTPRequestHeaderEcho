@@ -7,6 +7,7 @@ namespace HTTPRequestHeaderEcho;
 public sealed record HtmlPageModel(
     HttpContext Ctx,
     string[] Prefixes,
+    string[] HideList,
     string FormTargetGuid,
     string CurrentRequestSpec,
     string CurrentResponseSpec,
@@ -21,7 +22,7 @@ public static class HtmlPage
     {
         var encoder = HtmlEncoder.Default;
         var ctx = m.Ctx;
-        var headers = ctx.Request.Headers.WithPrefixFilter(m.Prefixes).WithConsentScrub().ToList();
+        var headers = ctx.Request.Headers.WithPrefixFilter(m.Prefixes).WithHideList(m.HideList).WithConsentScrub().ToList();
 
         var grouped = headers
             .GroupBy(h => GroupKey(h.Key), StringComparer.OrdinalIgnoreCase)
@@ -63,8 +64,6 @@ public static class HtmlPage
         sb.Append($"<span class=\"chip {methodClass}\">method<strong>{encoder.Encode(ctx.Request.Method)}</strong></span>");
         sb.Append($"<span class=\"chip\">path<strong>{encoder.Encode(ctx.Request.Path.ToString())}</strong></span>");
         sb.Append($"<span class=\"chip\">protocol<strong>{encoder.Encode(ctx.Request.Protocol)}</strong></span>");
-        var remoteIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "-";
-        sb.Append($"<span class=\"chip\">remote<strong>{encoder.Encode(remoteIp)}</strong></span>");
         sb.Append("</div>\n");
 
         // Render-time strip
