@@ -391,10 +391,10 @@ public static class HtmlPage
     --border-strong: #2e2e2e;
     --fg: #fafafa;
     --muted: #8a8a8a;
-    --accent: #7ee787;
+    --accent: #818cf8;
     --warn: #f0883e;
     --get: #3b82f6;
-    --post: #10b981;
+    --post: #a855f7;
     --put: #f59e0b;
     --delete: #ef4444;
     --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -409,7 +409,7 @@ public static class HtmlPage
       --border-strong: #d4d4d8;
       --fg: #18181b;
       --muted: #71717a;
-      --accent: #116329;
+      --accent: #4f46e5;
       --warn: #9a6700;
     }
   }
@@ -608,7 +608,7 @@ public static class HtmlPage
   button {
     align-self: flex-start;
     background: var(--accent);
-    color: var(--bg);
+    color: #ffffff;
     border: 1px solid var(--accent);
     border-radius: 6px;
     padding: 7px 18px;
@@ -617,9 +617,6 @@ public static class HtmlPage
     font-weight: 600;
     cursor: pointer;
     transition: opacity 120ms;
-  }
-  @media (prefers-color-scheme: light) {
-    button { color: #ffffff; }
   }
   button:hover { opacity: 0.88; }
 
