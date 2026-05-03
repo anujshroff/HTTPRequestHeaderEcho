@@ -4,6 +4,8 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HTTPRequestHeaderEcho", "src\HTTPRequestHeaderEcho\HTTPRequestHeaderEcho.csproj", "{B51AB877-3533-8FAF-852A-3A9832A3B2F8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HTTPRequestHeaderEcho.Tests", "test\HTTPRequestHeaderEcho.Tests\HTTPRequestHeaderEcho.Tests.csproj", "{DA4C0904-81B3-4DDD-BDCC-FA1689DF3661}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +16,10 @@ Global
 		{B51AB877-3533-8FAF-852A-3A9832A3B2F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B51AB877-3533-8FAF-852A-3A9832A3B2F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B51AB877-3533-8FAF-852A-3A9832A3B2F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA4C0904-81B3-4DDD-BDCC-FA1689DF3661}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA4C0904-81B3-4DDD-BDCC-FA1689DF3661}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA4C0904-81B3-4DDD-BDCC-FA1689DF3661}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA4C0904-81B3-4DDD-BDCC-FA1689DF3661}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
