@@ -1,0 +1,52 @@
+name: 'Sign HTTPRequestHeaderEcho.dll'
+description: 'Download HTTPRequestHeaderEcho.dll, sign with Azure Trusted Signing, upload signed DLL'
+inputs:
+  AZURE_CLIENT_ID:
+    required: true
+  AZURE_TENANT_ID:
+    required: true
+  AZURE_SUBSCRIPTION_ID:
+    required: true
+  TRUSTED_SIGNING_ENDPOINT:
+    required: true
+  TRUSTED_SIGNING_ACCOUNT:
+    required: true
+  TRUSTED_SIGNING_CERTIFICATE_PROFILE:
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download HTTPRequestHeaderEcho.dll
+      uses: actions/download-artifact@v8
+      with:
+        name: httprequestheaderecho-dll
+        path: ${{ github.workspace }}/to-sign
+
+    - name: Azure Login
+      uses: azure/login@v3
+      with:
+        client-id: ${{ inputs.AZURE_CLIENT_ID }}
+        tenant-id: ${{ inputs.AZURE_TENANT_ID }}
+        subscription-id: ${{ inputs.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Install Sign CLI
+      run: dotnet tool install --global sign --prerelease
+      shell: pwsh
+
+    - name: Sign HTTPRequestHeaderEcho.dll
+      run: |
+        sign code artifact-signing `
+          -ase "${{ inputs.TRUSTED_SIGNING_ENDPOINT }}" `
+          -asa "${{ inputs.TRUSTED_SIGNING_ACCOUNT }}" `
+          -ascp "${{ inputs.TRUSTED_SIGNING_CERTIFICATE_PROFILE }}" `
+          "${{ github.workspace }}/to-sign/HTTPRequestHeaderEcho.dll"
+      shell: pwsh
+
+    - name: Upload Signed HTTPRequestHeaderEcho.dll
+      uses: actions/upload-artifact@v7
+      with:
+        name: httprequestheaderecho-dll-signed
+        path: ${{ github.workspace }}/to-sign/HTTPRequestHeaderEcho.dll
+        retention-days: 1
+        if-no-files-found: error
