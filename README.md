@@ -36,7 +36,7 @@ Content-Type: text/html; charset=utf-8
 
 ## Requirements
 
-- .NET 10 SDK
+- .NET 11 SDK
 
 ## Run locally
 
